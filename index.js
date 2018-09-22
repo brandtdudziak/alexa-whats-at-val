@@ -39,8 +39,12 @@ const handlers = {
         var dinnerMenu = '';
 
         var date = new Date();
-        var time = date.getHours() + 19; //EST (Amherst) is 5 hours behind UTC
-        if(time > 23) {time -= 24;}
+        var tomorrow = false;
+        var time = date.getHours() - 4; //EST (Amherst) is 5 hours behind UTC
+
+        if(time < 0) {time += 24;}
+        if(time >= 20) {tomorrow = true;}
+        if(time == 19) {date.setDate(date.getDate()-1);}
 
         var monthString = "";
         var dayString = "";
@@ -55,11 +59,13 @@ const handlers = {
 
         var dateString = "" + date.getFullYear() + "-" + monthString + "-" + dayString;
         
-        var speechOutput = 'Today';
+        var speechOutput = '';
+        if(tomorrow) {speechOutput = 'Tomorrow';}
+        else {speechOutput = 'Today';}
 
         //Cheerio - retrieve from whatsatval.com using the menu index
         const options = {
-            uri: 'https://whatsatval.com/menus/dining-menu-' + dateString + '-meals.json',
+            uri: 'https://www.amherst.edu/campuslife/housing-dining/dining/menu',
             transform: function (body) {
                 return cheerio.load(body);
             }
@@ -68,23 +74,40 @@ const handlers = {
         //Request-promise
         rp(options)
           .then(($) => {
-            menu = $('body').text()
-            console.log(menu);
+            breakfastMenu = $('#dining-menu-' + dateString + '-Breakfast-menu-listing').text()
+            console.log(breakfastMenu);
+            lunchMenu = $('#dining-menu-' + dateString + '-Lunch-menu-listing').text()
+            console.log(lunchMenu);
+            dinnerMenu = $('#dining-menu-' + dateString + '-Dinner-menu-listing').text()
+            console.log(dinnerMenu);
+
 
             //Remove ampersands, incompatible with Alexa response
-            while(menu.indexOf('&') != -1){
-                menu = menu.substring(0, menu.indexOf('&')) + 'and' + menu.substring(menu.indexOf('&') + 1);
+            while(breakfastMenu.indexOf('&') != -1){
+                breakfastMenu = breakfastMenu.substring(0, breakfastMenu.indexOf('&')) + 'and' + breakfastMenu.substring(breakfastMenu.indexOf('&') + 1);
+            }
+            while(lunchMenu.indexOf('&') != -1){
+                lunchMenu = lunchMenu.substring(0, lunchMenu.indexOf('&')) + 'and' + lunchMenu.substring(lunchMenu.indexOf('&') + 1);
+            }
+            while(dinnerMenu.indexOf('&') != -1){
+                dinnerMenu = dinnerMenu.substring(0, dinnerMenu.indexOf('&')) + 'and' + dinnerMenu.substring(dinnerMenu.indexOf('&') + 1);
             }
 
-            breakfastMenu = menu.substring(menu.indexOf('breakfast') + 31, menu.indexOf('Pastry') - 3);
-            lunchMenu = menu.substring(menu.indexOf('Traditional') + 14, menu.indexOf('dinner') - 4);
-            dinnerMenu = menu.substring(menu.indexOf('Traditional', menu.indexOf('Traditional') + 1) + 14, menu.length - 3);
+            //Outdated - whatsatval.com
+            //breakfastMenu = menu.substring(menu.indexOf('breakfast') + 31, menu.indexOf('Pastry') - 3);
+            //lunchMenu = menu.substring(menu.indexOf('Traditional') + 14, menu.indexOf('dinner') - 4);
+            //dinnerMenu = menu.substring(menu.indexOf('Traditional', menu.indexOf('Traditional') + 1) + 14, menu.length - 3);
+
+            breakfastMenu = breakfastMenu.substring(15, breakfastMenu.indexOf('Ancient')) + 'and also ' + breakfastMenu.substring(breakfastMenu.indexOf('Smoothies') + 9); //start after Breakfast/Grill and add smoothies
+            lunchMenu = lunchMenu.substring(lunchMenu.indexOf('Traditional') + 11) + ' and also ' + lunchMenu.substring(lunchMenu.indexOf('Soup') + 4, lunchMenu.indexOf('Traditional')); //start after Traditional and add soups
+            dinnerMenu = dinnerMenu.substring(dinnerMenu.indexOf('Traditional') + 11); //start after Traditional
+
           })
           .then(() => {
             //Do not add past meals to response
-            if (time < 10) {speechOutput += GET_BREAKFAST_MESSAGE + breakfastMenu + '.';}
-            if (time < 14) {speechOutput += GET_LUNCH_MESSAGE + lunchMenu + '.';}
-            speechOutput += GET_DINNER_MESSAGE + dinnerMenu +'.';
+            if (time < 10 || time > 19) {speechOutput += GET_BREAKFAST_MESSAGE + breakfastMenu + '.';}
+            if (time < 14 || time > 19) {speechOutput += GET_LUNCH_MESSAGE + lunchMenu + '.';}
+            speechOutput += GET_DINNER_MESSAGE + dinnerMenu + '.';
 
             this.response.cardRenderer(SKILL_NAME, speechOutput);
             this.response.speak(speechOutput);
