@@ -6,9 +6,6 @@ const Alexa = require('alexa-sdk');
 const rp = require('request-promise');
 const cheerio = require('cheerio');
 
-
-const APP_ID = 'amzn1.ask.skill.74c8ddea-9194-41c1-9ae6-bdb19bc6b9cf';
-
 const SKILL_NAME = 'What\'s at Val';
 const GET_BREAKFAST_MESSAGE = " for breakfast, Val is serving ";
 const GET_LUNCH_MESSAGE = " for lunch, Val is serving ";
